@@ -72,7 +72,10 @@ export default function ReportModal({
         </div>
 
         {/* TAB 1: TECHNICAL AUDIT REPORT */}
-        {activeTab === 'report' && metrics && (
+        {activeTab === 'report' && metrics && (() => {
+          const currSym = metrics.currency_symbol || '₹';
+          const isIndia = currSym === '₹';
+          return (
           <div>
             {/* Header Title */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
@@ -95,7 +98,7 @@ export default function ReportModal({
                   {metrics.address || 'Target Coordinate Footprint'}
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
-                  NASA POWER Climatology Solar Data & CEA Grid Baseline (State: {metrics.state_applied || 'Telangana'})
+                  NASA POWER Climatology Solar Data &amp; {metrics.state_applied || 'Regional Grid Baseline'}
                 </p>
               </div>
 
@@ -125,7 +128,7 @@ export default function ReportModal({
             <div className="space-y-6">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
-                  1. GEOSPATIAL & PHYSICAL CHARACTERISTICS
+                  1. GEOSPATIAL &amp; PHYSICAL CHARACTERISTICS
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
@@ -136,7 +139,7 @@ export default function ReportModal({
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Shadow-Free Installation Space</span>
                     <div className="text-xl font-bold text-blue-600 mt-0.5">{metrics.usable_area_m2} m²</div>
-                    <span className="text-[11px] text-slate-400">Buffers Mumty, tanks & walking aisles</span>
+                    <span className="text-[11px] text-slate-400">Buffers Mumty, tanks &amp; walking aisles</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Recommended 400W Modules</span>
@@ -154,7 +157,7 @@ export default function ReportModal({
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Installed Peak Capacity</span>
                     <div className="text-xl font-bold text-emerald-600 mt-0.5">{metrics.system_capacity_kw} kWp</div>
-                    <span className="text-[11px] text-slate-400">Matches DISCOM Sanctioned Load</span>
+                    <span className="text-[11px] text-slate-400">Optimal Grid-Tie Capacity</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">NASA Solar Irradiance (GHI)</span>
@@ -164,34 +167,34 @@ export default function ReportModal({
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Est. Annual Yield (Yr 1)</span>
                     <div className="text-xl font-bold text-emerald-600 mt-0.5">{metrics.annual_energy_kwh.toLocaleString()} kWh/yr</div>
-                    <span className="text-[11px] text-slate-400">Covers ~90%+ household load</span>
+                    <span className="text-[11px] text-slate-400">Direct clean renewable generation</span>
                   </div>
                 </div>
               </div>
 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
-                  3. FINANCIAL AMORTIZATION & ECONOMIC RETURN
+                  3. FINANCIAL AMORTIZATION &amp; ECONOMIC RETURN
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Gross Turnkey CapEx</span>
-                    <div className="text-xl font-bold text-slate-900 mt-0.5">₹{metrics.estimated_cost?.toLocaleString()}</div>
-                    <span className="text-[11px] text-slate-400">~₹55,000/kWp benchmark</span>
+                    <div className="text-xl font-bold text-slate-900 mt-0.5">{currSym}{metrics.estimated_cost?.toLocaleString()}</div>
+                    <span className="text-[11px] text-slate-400">Turnkey engineering benchmark</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <span className="text-xs text-slate-500 uppercase font-medium">PM Surya Ghar Subsidy</span>
+                    <span className="text-xs text-slate-500 uppercase font-medium">{metrics.subsidy_name || 'Clean Energy Credit'}</span>
                     <div className="text-xl font-bold text-emerald-600 mt-0.5">
-                      {metrics.subsidy_amount ? `-₹${metrics.subsidy_amount.toLocaleString()}` : (metrics.total_area_m2 <= 250 ? '-₹78,000' : 'N/A (Commercial)')}
+                      {metrics.subsidy_amount ? `-${currSym}${metrics.subsidy_amount.toLocaleString()}` : 'N/A (Commercial)'}
                     </div>
-                    <span className="text-[11px] text-slate-400">Central Govt DBT Subsidy</span>
+                    <span className="text-[11px] text-slate-400">Incentive / Subsidy Scheme</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Net Out-Of-Pocket Cost</span>
                     <div className="text-xl font-bold text-slate-900 mt-0.5">
-                      ₹{(metrics.net_cost ? metrics.net_cost : Math.max(10000, (metrics.estimated_cost || 0) - (metrics.total_area_m2 <= 250 ? 78000 : 0))).toLocaleString()}
+                      {currSym}{(metrics.net_cost ? metrics.net_cost : Math.max(500, (metrics.estimated_cost || 0) - (metrics.subsidy_amount || 0))).toLocaleString()}
                     </div>
-                    <span className="text-[11px] text-emerald-600 font-semibold">After Govt Subsidy</span>
+                    <span className="text-[11px] text-emerald-600 font-semibold">After Applicable Subsidy</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Simple Payback Period</span>
@@ -208,7 +211,7 @@ export default function ReportModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="text-xs text-slate-500 uppercase font-medium">Grid CO2 Offset ({co2Factor} kg/kWh CEA)</span>
+                      <span className="text-xs text-slate-500 uppercase font-medium">Grid CO2 Offset ({co2Factor} kg/kWh)</span>
                       <div className="text-xl font-bold text-emerald-600 mt-0.5">{metrics.carbon_offset_tons} Metric Tons / yr</div>
                     </div>
                     <span className="text-xs text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-200 font-medium">
@@ -228,6 +231,8 @@ export default function ReportModal({
               </div>
             </div>
           </div>
+          );
+        })()}
         )}
 
         {/* TAB 2: CACHED SCANS HISTORY */}

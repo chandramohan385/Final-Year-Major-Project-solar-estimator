@@ -42,3 +42,107 @@ export function calculateGeodesicArea(ringCoords, centerLat = 17.385) {
   }
   return Math.round(Math.abs(areaSum) * 0.5 * 10) / 10;
 }
+
+/**
+ * Resolves regional electricity grid, emission factor, currency symbol, and tariff rates
+ * from geographical coordinates.
+ */
+export function getRegionalProfile(lat, lng) {
+  // India Bounding Box: 6.5N - 37.5N, 68.0E - 97.5E
+  if (lat >= 6.5 && lat <= 37.5 && lng >= 68.0 && lng <= 97.5) {
+    return {
+      country: 'India',
+      gridName: 'Telangana Grid (CEA v20)',
+      co2Factor: 0.82,
+      currencySymbol: '₹',
+      currencyCode: 'INR',
+      electricityRate: 7.50,
+      costPerKwp: 55000,
+      subsidyName: 'PM Surya Ghar (DBT)',
+      isIndia: true
+    };
+  }
+  // United States & Canada: 24.0N - 50.0N, -125.0W to -65.0W
+  if (lat >= 24.0 && lat <= 50.0 && lng >= -125.0 && lng <= -65.0) {
+    const isCalifornia = lat >= 32.5 && lat <= 42.0 && lng >= -124.5 && lng <= -114.0;
+    return {
+      country: 'United States',
+      gridName: isCalifornia ? 'California (CAISO Grid)' : 'US eGRID Subregion',
+      co2Factor: isCalifornia ? 0.23 : 0.38,
+      currencySymbol: '$',
+      currencyCode: 'USD',
+      electricityRate: isCalifornia ? 0.24 : 0.18,
+      costPerKwp: 1800,
+      subsidyName: 'Federal ITC (30%)',
+      isIndia: false
+    };
+  }
+  // Europe: 35.0N - 65.0N, -10.0W to 35.0E
+  if (lat >= 35.0 && lat <= 65.0 && lng >= -10.0 && lng <= 35.0) {
+    return {
+      country: 'Europe',
+      gridName: 'ENTSO-E European Grid',
+      co2Factor: 0.26,
+      currencySymbol: '€',
+      currencyCode: 'EUR',
+      electricityRate: 0.28,
+      costPerKwp: 1200,
+      subsidyName: 'EU Clean Energy Grant',
+      isIndia: false
+    };
+  }
+  // UAE / Middle East: 20.0N - 32.0N, 45.0E to 60.0E
+  if (lat >= 20.0 && lat <= 32.0 && lng >= 45.0 && lng <= 60.0) {
+    return {
+      country: 'UAE',
+      gridName: 'DEWA Regional Grid',
+      co2Factor: 0.42,
+      currencySymbol: 'AED ',
+      currencyCode: 'AED',
+      electricityRate: 0.38,
+      costPerKwp: 4200,
+      subsidyName: 'Shams Dubai Solar Initiative',
+      isIndia: false
+    };
+  }
+  // Japan: 30.0N - 46.0N, 128.0E to 146.0E
+  if (lat >= 30.0 && lat <= 46.0 && lng >= 128.0 && lng <= 146.0) {
+    return {
+      country: 'Japan',
+      gridName: 'TEPCO Regional Grid',
+      co2Factor: 0.45,
+      currencySymbol: '¥',
+      currencyCode: 'JPY',
+      electricityRate: 28.0,
+      costPerKwp: 240000,
+      subsidyName: 'Metropolitan Clean Energy Subsidy',
+      isIndia: false
+    };
+  }
+  // Australia: -45.0S to -10.0S, 112.0E to 155.0E
+  if (lat >= -45.0 && lat <= -10.0 && lng >= 112.0 && lng <= 155.0) {
+    return {
+      country: 'Australia',
+      gridName: 'NEM Australian Grid',
+      co2Factor: 0.58,
+      currencySymbol: 'A$',
+      currencyCode: 'AUD',
+      electricityRate: 0.29,
+      costPerKwp: 1400,
+      subsidyName: 'STC Solar Rebate',
+      isIndia: false
+    };
+  }
+  // Global Fallback
+  return {
+    country: 'International',
+    gridName: 'IEA Global Baseline Grid',
+    co2Factor: 0.48,
+    currencySymbol: '$',
+    currencyCode: 'USD',
+    electricityRate: 0.20,
+    costPerKwp: 1500,
+    subsidyName: 'Clean Energy Tax Credit',
+    isIndia: false
+  };
+}

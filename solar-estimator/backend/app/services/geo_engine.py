@@ -109,6 +109,112 @@ class GeospatialMathEngine:
         return round(abs(area_sum) * 0.5, 2)
 
     @classmethod
+    def get_regional_profile(cls, latitude: float, longitude: float, state_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Intelligently resolves regional electricity grid, emission factor,
+        currency symbol, and tariff rates from geographical coordinates.
+        """
+        # India Bounding Box: 6.5N - 37.5N, 68.0E - 97.5E
+        if 6.5 <= latitude <= 37.5 and 68.0 <= longitude <= 97.5:
+            applied_state = state_name or "Telangana"
+            co2 = cls.get_co2_factor_for_state(applied_state)
+            return {
+                "country": "India",
+                "grid_name": f"{applied_state} Grid (CEA v20)",
+                "co2_factor": co2,
+                "currency_symbol": "₹",
+                "currency_code": "INR",
+                "electricity_rate": 7.50,
+                "cost_per_kwp": 55000.0,
+                "is_india": True,
+                "subsidy_name": "PM Surya Ghar (DBT)"
+            }
+        
+        # United States & Canada: 24.0N - 50.0N, -125.0W to -65.0W
+        if 24.0 <= latitude <= 50.0 and -125.0 <= longitude <= -65.0:
+            is_california = 32.5 <= latitude <= 42.0 and -124.5 <= longitude <= -114.0
+            return {
+                "country": "United States",
+                "grid_name": "California (CAISO Grid)" if is_california else "US eGRID Subregion",
+                "co2_factor": 0.23 if is_california else 0.38,
+                "currency_symbol": "$",
+                "currency_code": "USD",
+                "electricity_rate": 0.24 if is_california else 0.18,
+                "cost_per_kwp": 1800.0,
+                "is_india": False,
+                "subsidy_name": "Federal ITC (30%)"
+            }
+        
+        # Europe: 35.0N - 65.0N, -10.0W to 35.0E
+        if 35.0 <= latitude <= 65.0 and -10.0 <= longitude <= 35.0:
+            return {
+                "country": "Europe",
+                "grid_name": "ENTSO-E European Grid",
+                "co2_factor": 0.26,
+                "currency_symbol": "€",
+                "currency_code": "EUR",
+                "electricity_rate": 0.28,
+                "cost_per_kwp": 1200.0,
+                "is_india": False,
+                "subsidy_name": "EU Clean Energy Grant"
+            }
+        
+        # UAE / Middle East: 20.0N - 32.0N, 45.0E to 60.0E
+        if 20.0 <= latitude <= 32.0 and 45.0 <= longitude <= 60.0:
+            return {
+                "country": "UAE",
+                "grid_name": "DEWA Regional Grid",
+                "co2_factor": 0.42,
+                "currency_symbol": "AED ",
+                "currency_code": "AED",
+                "electricity_rate": 0.38,
+                "cost_per_kwp": 4200.0,
+                "is_india": False,
+                "subsidy_name": "Shams Dubai Initiative"
+            }
+        
+        # Japan: 30.0N - 46.0N, 128.0E to 146.0E
+        if 30.0 <= latitude <= 46.0 and 128.0 <= longitude <= 146.0:
+            return {
+                "country": "Japan",
+                "grid_name": "TEPCO Regional Grid",
+                "co2_factor": 0.45,
+                "currency_symbol": "¥",
+                "currency_code": "JPY",
+                "electricity_rate": 28.0,
+                "cost_per_kwp": 240000.0,
+                "is_india": False,
+                "subsidy_name": "Tokyo Metropolitan Subsidy"
+            }
+        
+        # Australia: -45.0S to -10.0S, 112.0E to 155.0E
+        if -45.0 <= latitude <= -10.0 and 112.0 <= longitude <= 155.0:
+            return {
+                "country": "Australia",
+                "grid_name": "NEM Australian Grid",
+                "co2_factor": 0.58,
+                "currency_symbol": "A$",
+                "currency_code": "AUD",
+                "electricity_rate": 0.29,
+                "cost_per_kwp": 1400.0,
+                "is_india": False,
+                "subsidy_name": "STC Solar Rebate"
+            }
+        
+        # Global Fallback
+        return {
+            "country": "International",
+            "grid_name": "IEA Global Baseline Grid",
+            "co2_factor": 0.48,
+            "currency_symbol": "$",
+            "currency_code": "USD",
+            "electricity_rate": 0.20,
+            "cost_per_kwp": 1500.0,
+            "is_india": False,
+            "subsidy_name": "Clean Energy Tax Credit"
+        }
+
+    @classmethod
     def get_co2_factor_for_state(cls, state_name: Optional[str]) -> float:
         """Returns Central Electricity Authority (CEA) emission factor (kg CO2/kWh)."""
         if not state_name:
@@ -143,20 +249,29 @@ class GeospatialMathEngine:
             pixel_area_m2 = res_m ** 2
             total_area = (building_pixels or 1000) * pixel_area_m2
         
+        # 1. Resolve Geographic & Regional Profile (Currency, Grid, Tariff, Subsidies)
+        profile = cls.get_regional_profile(latitude, longitude, state_name=state)
+        currency_symbol = profile["currency_symbol"]
+        currency_code = profile["currency_code"]
+        grid_name = profile["grid_name"]
+        co2_factor = profile["co2_factor"]
+        subsidy_name = profile["subsidy_name"]
+        
+        # Dynamically set rates if default benchmark was passed
+        active_electricity_rate = electricity_rate if (electricity_rate != 7.50 or profile["is_india"]) else profile["electricity_rate"]
+        active_cost_per_kwp = cost_per_kwp if (cost_per_kwp != 55000.0 or profile["is_india"]) else profile["cost_per_kwp"]
+
         # A. Intelligent Scale Detection & Realistic Sizing
-        # In India, typical residential footprints are <= 250 m² (~2,700 sq ft).
-        # Residential rooftops have MUMTY (staircase room), water tanks, parapet shadows, and walking corridors.
-        # Consequently, real-world usable shadow-free terrace area is 20%-35%, and DISCOM domestic sanction load is typically 3 kW to 5 kW (8 to 12 modules).
+        # Typical residential footprints are <= 250 m² (~2,700 sq ft).
         is_residential = total_area <= 250.0
         
         if is_residential:
             building_category = "Residential House"
-            # Realistic shadow-free area (accounting for Mumty, Sintex tanks, clothes drying, and 1m perimeter setback)
+            # Realistic shadow-free area (accounting for Mumty, tanks, clothes drying, and 1m perimeter setback)
             effective_usable_fraction = 0.25 if total_area > 120 else 0.35
             target_usable_area = total_area * effective_usable_fraction
             
             # Sizing recommended modules: standard 400W panels
-            # 3 kWp to 5 kWp optimal domestic range (7 to 12 panels)
             raw_panels = math.floor(target_usable_area / settings.DEFAULT_MODULE_AREA_M2)
             if total_area < 80:
                 num_standard_panels = max(4, min(raw_panels, 6))      # 1.6 - 2.4 kWp (small home)
@@ -168,13 +283,16 @@ class GeospatialMathEngine:
             usable_area = round(num_standard_panels * settings.DEFAULT_MODULE_AREA_M2, 1)
             peak_system_capacity_kw = round((num_standard_panels * settings.DEFAULT_PANEL_RATING_W) / 1000.0, 2)
             
-            # Central Government Subsidy (PM Surya Ghar: Muft Bijli Yojana)
-            # Up to 2 kW: ₹30,000 / kW (max ₹60,000)
-            # 3 kW and above: ₹78,000 flat DBT subsidy
-            if peak_system_capacity_kw >= 3.0:
-                subsidy_amount = 78000.0
+            # Central Government Subsidy / Clean Energy Credits
+            if profile["is_india"]:
+                if peak_system_capacity_kw >= 3.0:
+                    subsidy_amount = 78000.0
+                else:
+                    subsidy_amount = round(peak_system_capacity_kw * 30000.0, 2)
             else:
-                subsidy_amount = round(peak_system_capacity_kw * 30000.0, 2)
+                # 30% Federal / Regional Clean Energy Credit
+                gross_pre = round(peak_system_capacity_kw * active_cost_per_kwp, 2)
+                subsidy_amount = round(gross_pre * 0.30, 2)
         else:
             building_category = "Commercial / Industrial Complex"
             usable_area = round(total_area * usable_fraction, 1)
@@ -186,15 +304,14 @@ class GeospatialMathEngine:
         annual_irradiance = irradiance if (irradiance is not None and irradiance > 0) else cls.estimate_solar_irradiance(latitude, longitude)
         annual_energy = peak_system_capacity_kw * annual_irradiance * performance_ratio
         
-        # C. Environmental Decarbonization (India CEA Grid Factor)
-        co2_factor = cls.get_co2_factor_for_state(state)
+        # C. Environmental Decarbonization (Regional Grid Factor)
         carbon_offset_tons = (annual_energy * co2_factor) / 1000.0
         trees_equivalent = round(carbon_offset_tons * 45) # ~45 mature trees equivalent per ton CO2/yr
         
-        # D. CapEx & Economics (Including PM Surya Ghar Subsidy)
-        total_capex = round(peak_system_capacity_kw * cost_per_kwp, 2)
-        net_capex = max(5000.0, round(total_capex - subsidy_amount, 2))
-        annual_savings = round(annual_energy * electricity_rate, 2)
+        # D. CapEx & Economics
+        total_capex = round(peak_system_capacity_kw * active_cost_per_kwp, 2)
+        net_capex = max(500.0 if not profile["is_india"] else 5000.0, round(total_capex - subsidy_amount, 2))
+        annual_savings = round(annual_energy * active_electricity_rate, 2)
         payback_years = round(net_capex / max(annual_savings, 1.0), 1)
         
         # E. 25-Year Compound Degradation Model (~0.7% degradation/year, ~8% O&M reserve)
@@ -203,7 +320,7 @@ class GeospatialMathEngine:
             annual_energy * ((1.0 - degradation_rate) ** yr)
             for yr in range(25)
         ])
-        lifetime_savings = lifetime_energy * electricity_rate * 0.92  # 8% total life-cycle inverter replacements / O&M
+        lifetime_savings = lifetime_energy * active_electricity_rate * 0.92  # 8% total life-cycle inverter replacements / O&M
         lifetime_roi = round(((lifetime_savings - net_capex) / max(net_capex, 1.0)) * 100.0, 1)
         
         return {
@@ -214,7 +331,10 @@ class GeospatialMathEngine:
             "annual_energy_kwh": round(annual_energy, 1),
             "carbon_offset_tons": round(carbon_offset_tons, 2),
             "co2_factor_used": co2_factor,
-            "state_applied": state or "Telangana",
+            "state_applied": grid_name,
+            "currency_symbol": currency_symbol,
+            "currency_code": currency_code,
+            "subsidy_name": subsidy_name,
             "trees_equivalent": trees_equivalent,
             "estimated_cost": round(total_capex, 2),
             "subsidy_amount": round(subsidy_amount, 2),

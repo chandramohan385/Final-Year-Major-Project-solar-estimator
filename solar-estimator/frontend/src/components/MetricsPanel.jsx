@@ -41,14 +41,22 @@ export default function MetricsPanel({
     }
   }
 
-  // Real-World CEA Decarbonization & Economic Modeling with Subsidy
+  // Currency & Regional Grid
+  const currSym = metrics.currency_symbol || '₹';
+  const isIndia = currSym === '₹';
+  const electricityRate = isIndia ? 7.50 : (currSym === '$' ? 0.24 : (currSym === 'AED ' ? 0.38 : (currSym === '¥' ? 28.0 : 0.28)));
+  const costPerKw = isIndia ? 55000 : (currSym === '$' ? 1800 : (currSym === 'AED ' ? 4200 : (currSym === '¥' ? 240000 : 1200)));
+
+  // Real-World Decarbonization & Economic Modeling with Subsidy
   const isResidential = metrics.building_category === "Residential House" || (metrics.total_area_m2 && metrics.total_area_m2 <= 250);
-  const co2Factor = metrics.co2_factor_used || 0.86;
+  const co2Factor = metrics.co2_factor_used || (isIndia ? 0.82 : 0.23);
   const dynamicCarbon = Math.round(((dynamicKwh * co2Factor) / 1000) * 10) / 10;
-  const dynamicSavings = Math.round(dynamicKwh * 7.50);
-  const subsidyAmount = isResidential ? (dynamicKw >= 3.0 ? 78000 : Math.round(dynamicKw * 30000)) : 0;
-  const dynamicGrossCapEx = Math.round(dynamicKw * 55000);
-  const dynamicNetCapEx = Math.max(5000, dynamicGrossCapEx - subsidyAmount);
+  const dynamicSavings = Math.round(dynamicKwh * electricityRate);
+  const dynamicGrossCapEx = Math.round(dynamicKw * costPerKw);
+  const subsidyAmount = isResidential 
+    ? (isIndia ? (dynamicKw >= 3.0 ? 78000 : Math.round(dynamicKw * 30000)) : Math.round(dynamicGrossCapEx * 0.30)) 
+    : 0;
+  const dynamicNetCapEx = Math.max(isIndia ? 5000 : 500, dynamicGrossCapEx - subsidyAmount);
   const dynamicPayback = dynamicSavings > 0 ? Math.round((dynamicNetCapEx / dynamicSavings) * 10) / 10 : 0;
   
   // 25-Year Compound Degradation Model (0.7%/year PV derating + 8% O&M reserve)
@@ -56,16 +64,16 @@ export default function MetricsPanel({
   for (let yr = 0; yr < 25; yr++) {
     lifetimeEnergy += dynamicKwh * Math.pow(1 - 0.007, yr);
   }
-  const dynamicLifetimeSavings = lifetimeEnergy * 7.50 * 0.92;
+  const dynamicLifetimeSavings = lifetimeEnergy * electricityRate * 0.92;
   const dynamicROI = dynamicNetCapEx > 0 
     ? Math.round(((dynamicLifetimeSavings - dynamicNetCapEx) / dynamicNetCapEx) * 1000) / 10 
     : 0;
 
   // Site name for collapsed strip
   const siteName = metrics.address ? metrics.address.split(',')[0].replace(/\(.*?\)/g, '').trim() : 'Site';
-  const formattedSavings = dynamicSavings >= 100000 
-    ? `₹${(dynamicSavings / 100000).toFixed(2)}L/yr`
-    : `₹${dynamicSavings.toLocaleString()}/yr`;
+  const formattedSavings = isIndia 
+    ? (dynamicSavings >= 100000 ? `₹${(dynamicSavings / 100000).toFixed(2)}L/yr` : `₹${dynamicSavings.toLocaleString()}/yr`)
+    : `${currSym}${dynamicSavings.toLocaleString()}/yr`;
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-5xl px-4 pointer-events-none font-sans">

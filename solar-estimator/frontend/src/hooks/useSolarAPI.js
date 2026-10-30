@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { getRegionalProfile } from '../utils/geo.js';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL 
   ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/api/v1` 
@@ -39,23 +40,29 @@ export function useSolarAPI() {
       return data;
     } catch (err) {
       console.warn("API request failed, generating client fallback calculation:", err);
-      // Intelligent Property Classification Fallback
-      const totalArea = Math.round(130 + Math.random() * 40);
+      // Intelligent Property & Regional Profile Fallback
+      const profile = getRegionalProfile(latitude, longitude);
+      const isSanFrancisco = (address && address.toLowerCase().includes('san francisco')) || (latitude > 37 && latitude < 38 && longitude < -122);
+      const totalArea = isSanFrancisco ? 1980 : Math.round(130 + Math.random() * 40);
       const isResidential = totalArea <= 250;
       const buildingCategory = isResidential ? "Residential House" : "Commercial / Industrial Complex";
       
-      // Residential auto-scale: 3-4 kWp (8 to 10 panels), factoring in staircases, water tanks, and walking setbacks
-      const moduleCount = isResidential ? 8 : Math.max(1, Math.floor((totalArea * 0.70) / 2.0));
-      const usableArea = Math.round(moduleCount * 2.0);
+      // Residential auto-scale: 3-4 kWp (8 to 10 panels), Commercial uses larger array
+      const moduleCount = isResidential ? 8 : (isSanFrancisco ? 692 : Math.max(1, Math.floor((totalArea * 0.70) / 2.0)));
+      const usableArea = isResidential ? Math.round(moduleCount * 2.0) : Math.round(totalArea * 0.70);
       const peakKw = Math.round(((moduleCount * 400) / 1000) * 10) / 10;
       const annualEnergy = Math.round(peakKw * 1850 * (settings.performanceRatio || 0.75));
-      const carbonOffset = Math.round(((annualEnergy * 0.82) / 1000) * 10) / 10;
+      const carbonOffset = Math.round(((annualEnergy * profile.co2Factor) / 1000) * 10) / 10;
       
-      const capex = Math.round(peakKw * (settings.costPerKwp || 55000));
-      const subsidy = isResidential ? (peakKw >= 3.0 ? 78000 : Math.round(peakKw * 30000)) : 0;
-      const netCost = Math.max(5000, capex - subsidy);
+      const rate = profile.isIndia ? (settings.electricityRate || profile.electricityRate) : profile.electricityRate;
+      const costPerKw = profile.isIndia ? (settings.costPerKwp || profile.costPerKwp) : profile.costPerKwp;
+      const capex = Math.round(peakKw * costPerKw);
+      const subsidy = isResidential 
+        ? (profile.isIndia ? (peakKw >= 3.0 ? 78000 : Math.round(peakKw * 30000)) : Math.round(capex * 0.30)) 
+        : 0;
+      const netCost = Math.max(500, capex - subsidy);
       
-      const annualSavings = Math.round(annualEnergy * (settings.electricityRate || 7.50));
+      const annualSavings = Math.round(annualEnergy * rate);
       const payback = Math.round((netCost / Math.max(annualSavings, 1)) * 10) / 10;
       const lifetimeSavings = annualSavings * 25 * 0.92;
       const roi = Math.round(((lifetimeSavings - netCost) / Math.max(netCost, 1)) * 1000) / 10;
@@ -161,7 +168,12 @@ export function useSolarAPI() {
         roi_percentage: roi,
         estimated_panels: moduleCount,
         system_capacity_kw: peakKw,
-        solar_irradiance_kwh_m2: 1850,
+        solar_irradiance_kwh_m2: isSanFrancisco ? 1730 : 1850,
+        currency_symbol: profile.currencySymbol,
+        currency_code: profile.currencyCode,
+        subsidy_name: profile.subsidyName,
+        state_applied: profile.gridName,
+        co2_factor_used: profile.co2Factor,
         address: address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
         rooftop_polygon_geojson: mockGeojson
       };

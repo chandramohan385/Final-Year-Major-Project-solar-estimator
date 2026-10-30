@@ -41,6 +41,9 @@ class EstimationResponse(BaseModel):
     estimated_cost: Optional[float] = 0.0
     subsidy_amount: Optional[float] = 0.0
     net_cost: Optional[float] = 0.0
+    currency_symbol: Optional[str] = "₹"
+    currency_code: Optional[str] = "INR"
+    subsidy_name: Optional[str] = "PM Surya Ghar (DBT)"
     building_category: Optional[str] = "Residential House"
     annual_savings: Optional[float] = 0.0
     estimated_panels: Optional[int] = 0
