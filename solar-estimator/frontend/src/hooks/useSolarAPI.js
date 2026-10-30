@@ -39,18 +39,26 @@ export function useSolarAPI() {
       return data;
     } catch (err) {
       console.warn("API request failed, generating client fallback calculation:", err);
-      // Fallback calculation matching standard industry formulas
-      const totalArea = Math.round(180 + Math.random() * 120);
-      const usableArea = Math.round(totalArea * 0.70); // 70% coverage
-      const moduleCount = Math.max(1, Math.floor(usableArea / 2.0));
+      // Intelligent Property Classification Fallback
+      const totalArea = Math.round(130 + Math.random() * 40);
+      const isResidential = totalArea <= 250;
+      const buildingCategory = isResidential ? "Residential House" : "Commercial / Industrial Complex";
+      
+      // Residential auto-scale: 3-4 kWp (8 to 10 panels), factoring in staircases, water tanks, and walking setbacks
+      const moduleCount = isResidential ? 8 : Math.max(1, Math.floor((totalArea * 0.70) / 2.0));
+      const usableArea = Math.round(moduleCount * 2.0);
       const peakKw = Math.round(((moduleCount * 400) / 1000) * 10) / 10;
       const annualEnergy = Math.round(peakKw * 1850 * (settings.performanceRatio || 0.75));
       const carbonOffset = Math.round(((annualEnergy * 0.82) / 1000) * 10) / 10;
-      const capex = Math.round(peakKw * 55000);
+      
+      const capex = Math.round(peakKw * (settings.costPerKwp || 55000));
+      const subsidy = isResidential ? (peakKw >= 3.0 ? 78000 : Math.round(peakKw * 30000)) : 0;
+      const netCost = Math.max(5000, capex - subsidy);
+      
       const annualSavings = Math.round(annualEnergy * (settings.electricityRate || 7.50));
-      const payback = Math.round((capex / Math.max(annualSavings, 1)) * 10) / 10;
-      const lifetimeSavings = annualSavings * 25 * 0.90;
-      const roi = Math.round(((lifetimeSavings - capex) / Math.max(capex, 1)) * 1000) / 10;
+      const payback = Math.round((netCost / Math.max(annualSavings, 1)) * 10) / 10;
+      const lifetimeSavings = annualSavings * 25 * 0.92;
+      const roi = Math.round(((lifetimeSavings - netCost) / Math.max(netCost, 1)) * 1000) / 10;
 
       const delta = 0.00025;
       const facet1Panels = Math.floor(moduleCount * 0.42);
@@ -145,6 +153,9 @@ export function useSolarAPI() {
         carbon_offset_tons: carbonOffset,
         trees_equivalent: Math.round(carbonOffset * 45),
         estimated_cost: capex,
+        subsidy_amount: subsidy,
+        net_cost: netCost,
+        building_category: buildingCategory,
         annual_savings: annualSavings,
         payback_years: payback,
         roi_percentage: roi,

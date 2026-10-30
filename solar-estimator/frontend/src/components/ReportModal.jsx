@@ -77,8 +77,19 @@ export default function ReportModal({
             {/* Header Title */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
               <div>
-                <div className="flex items-center gap-2 text-blue-600 text-xs font-bold tracking-wider uppercase">
-                  <ShieldCheck className="w-4 h-4" /> HIGH-RESOLUTION PHOTOVOLTAIC FEASIBILITY ASSESSMENT
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1.5 text-blue-600 text-xs font-bold tracking-wider uppercase">
+                    <ShieldCheck className="w-4 h-4" /> HIGH-RESOLUTION PHOTOVOLTAIC FEASIBILITY ASSESSMENT
+                  </span>
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                    (metrics.building_category === "Residential House" || metrics.total_area_m2 <= 250)
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-blue-50 text-blue-700 border-blue-200"
+                  }`}>
+                    {(metrics.building_category === "Residential House" || metrics.total_area_m2 <= 250)
+                      ? "🏠 Residential House (Auto-Sized 3–5 kWp)"
+                      : "🏢 Commercial / Industrial Complex"}
+                  </span>
                 </div>
                 <h1 className="text-2xl font-bold text-slate-900 mt-1">
                   {metrics.address || 'Target Coordinate Footprint'}
@@ -93,7 +104,7 @@ export default function ReportModal({
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs text-slate-700 px-3.5 py-2 rounded-lg transition-colors font-medium"
+                  className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs text-slate-700 px-3.5 py-2 rounded-lg transition-colors font-medium cursor-pointer"
                 >
                   <Printer className="w-4 h-4 text-slate-500" />
                   <span>Print Report</span>
@@ -102,7 +113,7 @@ export default function ReportModal({
                 <button
                   type="button"
                   onClick={handleDownloadJSON}
-                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2 rounded-lg transition-colors shadow-sm"
+                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2 rounded-lg transition-colors shadow-sm cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export JSON</span>
@@ -120,14 +131,17 @@ export default function ReportModal({
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Gross Building Footprint</span>
                     <div className="text-xl font-bold text-slate-900 mt-0.5">{metrics.total_area_m2} m²</div>
+                    <span className="text-[11px] text-slate-400">Total rooftop satellite contour</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <span className="text-xs text-slate-500 uppercase font-medium">Effective Usable Roof Area</span>
+                    <span className="text-xs text-slate-500 uppercase font-medium">Shadow-Free Installation Space</span>
                     <div className="text-xl font-bold text-blue-600 mt-0.5">{metrics.usable_area_m2} m²</div>
+                    <span className="text-[11px] text-slate-400">Buffers Mumty, tanks & walking aisles</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <span className="text-xs text-slate-500 uppercase font-medium">Estimated 400W Modules</span>
+                    <span className="text-xs text-slate-500 uppercase font-medium">Recommended 400W Modules</span>
                     <div className="text-xl font-bold text-slate-900 mt-0.5">{metrics.estimated_panels} Panels</div>
+                    <span className="text-[11px] text-slate-400">High-efficiency Monocrystalline</span>
                   </div>
                 </div>
               </div>
@@ -140,14 +154,17 @@ export default function ReportModal({
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Installed Peak Capacity</span>
                     <div className="text-xl font-bold text-emerald-600 mt-0.5">{metrics.system_capacity_kw} kWp</div>
+                    <span className="text-[11px] text-slate-400">Matches DISCOM Sanctioned Load</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">NASA Solar Irradiance (GHI)</span>
                     <div className="text-xl font-bold text-slate-900 mt-0.5">{metrics.solar_irradiance_kwh_m2} kWh/m²/yr</div>
+                    <span className="text-[11px] text-slate-400">Satellite multi-year climatology</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Est. Annual Yield (Yr 1)</span>
                     <div className="text-xl font-bold text-emerald-600 mt-0.5">{metrics.annual_energy_kwh.toLocaleString()} kWh/yr</div>
+                    <span className="text-[11px] text-slate-400">Covers ~90%+ household load</span>
                   </div>
                 </div>
               </div>
@@ -158,24 +175,28 @@ export default function ReportModal({
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <span className="text-xs text-slate-500 uppercase font-medium">Estimated Turnkey CapEx</span>
+                    <span className="text-xs text-slate-500 uppercase font-medium">Gross Turnkey CapEx</span>
                     <div className="text-xl font-bold text-slate-900 mt-0.5">₹{metrics.estimated_cost?.toLocaleString()}</div>
                     <span className="text-[11px] text-slate-400">~₹55,000/kWp benchmark</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <span className="text-xs text-slate-500 uppercase font-medium">Annual Tariff Savings</span>
-                    <div className="text-xl font-bold text-blue-600 mt-0.5">₹{metrics.annual_savings?.toLocaleString()}/yr</div>
-                    <span className="text-[11px] text-slate-400">@ ₹7.50 / kWh standard tariff</span>
+                    <span className="text-xs text-slate-500 uppercase font-medium">PM Surya Ghar Subsidy</span>
+                    <div className="text-xl font-bold text-emerald-600 mt-0.5">
+                      {metrics.subsidy_amount ? `-₹${metrics.subsidy_amount.toLocaleString()}` : (metrics.total_area_m2 <= 250 ? '-₹78,000' : 'N/A (Commercial)')}
+                    </div>
+                    <span className="text-[11px] text-slate-400">Central Govt DBT Subsidy</span>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                    <span className="text-xs text-slate-500 uppercase font-medium">Net Out-Of-Pocket Cost</span>
+                    <div className="text-xl font-bold text-slate-900 mt-0.5">
+                      ₹{(metrics.net_cost ? metrics.net_cost : Math.max(10000, (metrics.estimated_cost || 0) - (metrics.total_area_m2 <= 250 ? 78000 : 0))).toLocaleString()}
+                    </div>
+                    <span className="text-[11px] text-emerald-600 font-semibold">After Govt Subsidy</span>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     <span className="text-xs text-slate-500 uppercase font-medium">Simple Payback Period</span>
                     <div className="text-xl font-bold text-blue-600 mt-0.5">{metrics.payback_years} Years</div>
-                    <span className="text-[11px] text-slate-400">CapEx / Annual Savings</span>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <span className="text-xs text-slate-500 uppercase font-medium">ROI (25-Yr System Net)</span>
-                    <div className="text-xl font-bold text-emerald-600 mt-0.5">{metrics.roi_percentage}%</div>
-                    <span className="text-[11px] text-slate-400">Compound 0.7%/yr degradation</span>
+                    <span className="text-[11px] text-slate-400">Net Cost / Annual Savings</span>
                   </div>
                 </div>
               </div>

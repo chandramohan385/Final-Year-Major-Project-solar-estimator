@@ -41,12 +41,15 @@ export default function MetricsPanel({
     }
   }
 
-  // Real-World CEA Decarbonization & Economic Modeling
+  // Real-World CEA Decarbonization & Economic Modeling with Subsidy
+  const isResidential = metrics.building_category === "Residential House" || (metrics.total_area_m2 && metrics.total_area_m2 <= 250);
   const co2Factor = metrics.co2_factor_used || 0.86;
   const dynamicCarbon = Math.round(((dynamicKwh * co2Factor) / 1000) * 10) / 10;
   const dynamicSavings = Math.round(dynamicKwh * 7.50);
-  const dynamicCapEx = Math.round(dynamicKw * 55000);
-  const dynamicPayback = dynamicSavings > 0 ? Math.round((dynamicCapEx / dynamicSavings) * 10) / 10 : 0;
+  const subsidyAmount = isResidential ? (dynamicKw >= 3.0 ? 78000 : Math.round(dynamicKw * 30000)) : 0;
+  const dynamicGrossCapEx = Math.round(dynamicKw * 55000);
+  const dynamicNetCapEx = Math.max(5000, dynamicGrossCapEx - subsidyAmount);
+  const dynamicPayback = dynamicSavings > 0 ? Math.round((dynamicNetCapEx / dynamicSavings) * 10) / 10 : 0;
   
   // 25-Year Compound Degradation Model (0.7%/year PV derating + 8% O&M reserve)
   let lifetimeEnergy = 0;
@@ -54,8 +57,8 @@ export default function MetricsPanel({
     lifetimeEnergy += dynamicKwh * Math.pow(1 - 0.007, yr);
   }
   const dynamicLifetimeSavings = lifetimeEnergy * 7.50 * 0.92;
-  const dynamicROI = dynamicCapEx > 0 
-    ? Math.round(((dynamicLifetimeSavings - dynamicCapEx) / dynamicCapEx) * 1000) / 10 
+  const dynamicROI = dynamicNetCapEx > 0 
+    ? Math.round(((dynamicLifetimeSavings - dynamicNetCapEx) / dynamicNetCapEx) * 1000) / 10 
     : 0;
 
   // Site name for collapsed strip
@@ -100,6 +103,15 @@ export default function MetricsPanel({
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               <span className="text-xs text-slate-900 font-semibold uppercase tracking-wide truncate max-w-[200px] sm:max-w-[340px]">
                 {metrics.address || 'Target Site Assessment'}
+              </span>
+
+              {/* Property Category Badge */}
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                isResidential 
+                  ? "bg-amber-50 text-amber-700 border-amber-200" 
+                  : "bg-blue-50 text-blue-700 border-blue-200"
+              }`}>
+                {isResidential ? "🏠 Residential (3-5 kWp Auto)" : "🏢 Commercial"}
               </span>
               
               {/* NASA POWER GHI Badge */}
@@ -265,7 +277,9 @@ export default function MetricsPanel({
               </div>
               
               <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
-                <span className="font-bold text-slate-900">{formattedSavings}</span>
+                <span className="font-bold text-slate-900" title={isResidential ? `Net CapEx after ₹${subsidyAmount.toLocaleString()} PM Surya Ghar Subsidy: ₹${dynamicNetCapEx.toLocaleString()}` : undefined}>
+                  {isResidential ? `Net: ₹${(dynamicNetCapEx / 1000).toFixed(0)}k` : formattedSavings}
+                </span>
                 <span>·</span>
                 {/* ROI (25-Yr) Tooltip */}
                 <div className="relative group/roi cursor-help">

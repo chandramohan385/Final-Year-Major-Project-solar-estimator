@@ -39,6 +39,9 @@ class EstimationResponse(BaseModel):
     rooftop_polygon_geojson: dict
     trees_equivalent: Optional[int] = 0
     estimated_cost: Optional[float] = 0.0
+    subsidy_amount: Optional[float] = 0.0
+    net_cost: Optional[float] = 0.0
+    building_category: Optional[str] = "Residential House"
     annual_savings: Optional[float] = 0.0
     estimated_panels: Optional[int] = 0
     system_capacity_kw: Optional[float] = 0.0

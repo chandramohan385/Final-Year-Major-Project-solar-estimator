@@ -143,11 +143,44 @@ class GeospatialMathEngine:
             pixel_area_m2 = res_m ** 2
             total_area = (building_pixels or 1000) * pixel_area_m2
         
-        # A. Usable Roof Area & Module Count
-        usable_area = total_area * usable_fraction
-        # Standard Monocrystalline Module: ~400W rating, ~2.0 m² footprint
-        num_standard_panels = max(1, math.floor(usable_area / settings.DEFAULT_MODULE_AREA_M2))
-        peak_system_capacity_kw = round((num_standard_panels * settings.DEFAULT_PANEL_RATING_W) / 1000.0, 2)
+        # A. Intelligent Scale Detection & Realistic Sizing
+        # In India, typical residential footprints are <= 250 m² (~2,700 sq ft).
+        # Residential rooftops have MUMTY (staircase room), water tanks, parapet shadows, and walking corridors.
+        # Consequently, real-world usable shadow-free terrace area is 20%-35%, and DISCOM domestic sanction load is typically 3 kW to 5 kW (8 to 12 modules).
+        is_residential = total_area <= 250.0
+        
+        if is_residential:
+            building_category = "Residential House"
+            # Realistic shadow-free area (accounting for Mumty, Sintex tanks, clothes drying, and 1m perimeter setback)
+            effective_usable_fraction = 0.25 if total_area > 120 else 0.35
+            target_usable_area = total_area * effective_usable_fraction
+            
+            # Sizing recommended modules: standard 400W panels
+            # 3 kWp to 5 kWp optimal domestic range (7 to 12 panels)
+            raw_panels = math.floor(target_usable_area / settings.DEFAULT_MODULE_AREA_M2)
+            if total_area < 80:
+                num_standard_panels = max(4, min(raw_panels, 6))      # 1.6 - 2.4 kWp (small home)
+            elif total_area <= 160:
+                num_standard_panels = max(6, min(raw_panels, 8))      # 2.4 - 3.2 kWp (standard 3BHK / duplex)
+            else:
+                num_standard_panels = max(8, min(raw_panels, 12))     # 3.2 - 4.8 kWp (large villa)
+            
+            usable_area = round(num_standard_panels * settings.DEFAULT_MODULE_AREA_M2, 1)
+            peak_system_capacity_kw = round((num_standard_panels * settings.DEFAULT_PANEL_RATING_W) / 1000.0, 2)
+            
+            # Central Government Subsidy (PM Surya Ghar: Muft Bijli Yojana)
+            # Up to 2 kW: ₹30,000 / kW (max ₹60,000)
+            # 3 kW and above: ₹78,000 flat DBT subsidy
+            if peak_system_capacity_kw >= 3.0:
+                subsidy_amount = 78000.0
+            else:
+                subsidy_amount = round(peak_system_capacity_kw * 30000.0, 2)
+        else:
+            building_category = "Commercial / Industrial Complex"
+            usable_area = round(total_area * usable_fraction, 1)
+            num_standard_panels = max(1, math.floor(usable_area / settings.DEFAULT_MODULE_AREA_M2))
+            peak_system_capacity_kw = round((num_standard_panels * settings.DEFAULT_PANEL_RATING_W) / 1000.0, 2)
+            subsidy_amount = 0.0
         
         # B. Annual Generation: Peak Capacity (kWp) * Annual GHI (kWh/m²/yr) * Performance Ratio (PR)
         annual_irradiance = irradiance if (irradiance is not None and irradiance > 0) else cls.estimate_solar_irradiance(latitude, longitude)
@@ -158,10 +191,11 @@ class GeospatialMathEngine:
         carbon_offset_tons = (annual_energy * co2_factor) / 1000.0
         trees_equivalent = round(carbon_offset_tons * 45) # ~45 mature trees equivalent per ton CO2/yr
         
-        # D. CapEx & Economics
-        total_capex = peak_system_capacity_kw * cost_per_kwp
-        annual_savings = annual_energy * electricity_rate
-        payback_years = round(total_capex / max(annual_savings, 1.0), 1)
+        # D. CapEx & Economics (Including PM Surya Ghar Subsidy)
+        total_capex = round(peak_system_capacity_kw * cost_per_kwp, 2)
+        net_capex = max(5000.0, round(total_capex - subsidy_amount, 2))
+        annual_savings = round(annual_energy * electricity_rate, 2)
+        payback_years = round(net_capex / max(annual_savings, 1.0), 1)
         
         # E. 25-Year Compound Degradation Model (~0.7% degradation/year, ~8% O&M reserve)
         degradation_rate = settings.ANNUAL_DEGRADATION_RATE
@@ -170,7 +204,7 @@ class GeospatialMathEngine:
             for yr in range(25)
         ])
         lifetime_savings = lifetime_energy * electricity_rate * 0.92  # 8% total life-cycle inverter replacements / O&M
-        lifetime_roi = round(((lifetime_savings - total_capex) / max(total_capex, 1.0)) * 100.0, 1)
+        lifetime_roi = round(((lifetime_savings - net_capex) / max(net_capex, 1.0)) * 100.0, 1)
         
         return {
             "total_area_m2": round(total_area, 1),
@@ -183,6 +217,9 @@ class GeospatialMathEngine:
             "state_applied": state or "Telangana",
             "trees_equivalent": trees_equivalent,
             "estimated_cost": round(total_capex, 2),
+            "subsidy_amount": round(subsidy_amount, 2),
+            "net_cost": round(net_capex, 2),
+            "building_category": building_category,
             "annual_savings": round(annual_savings, 2),
             "payback_years": max(1.0, payback_years),
             "roi_percentage": max(0.0, lifetime_roi),
