@@ -337,7 +337,7 @@ export default function MapHUD({
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
-    if (!geojsonFeatures || !geojsonFeatures.features || geojsonFeatures.features.length === 0) {
+    if (cadMode === 'draw' || !geojsonFeatures || !geojsonFeatures.features || geojsonFeatures.features.length === 0) {
       if (geojsonLayerRef.current) {
         mapInstanceRef.current.removeLayer(geojsonLayerRef.current);
         geojsonLayerRef.current = null;

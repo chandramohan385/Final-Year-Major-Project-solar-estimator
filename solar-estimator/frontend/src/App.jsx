@@ -127,7 +127,15 @@ export default function App() {
 
   // Toggle CAD drawing mode
   const handleToggleCadMode = () => {
-    setCadMode((prev) => (prev === 'draw' ? 'auto' : 'draw'));
+    setCadMode((prev) => {
+      const next = prev === 'draw' ? 'auto' : 'draw';
+      if (next === 'draw') {
+        // Clear previous scanned polygon and metrics when entering drawing mode
+        setMetrics(null);
+        setActiveFacetIds([]);
+      }
+      return next;
+    });
   };
 
   // Handle user completing a drawn polygon
@@ -306,7 +314,7 @@ export default function App() {
               setZoom(newZoom);
             }}
             isScanning={isScanning}
-            geojsonFeatures={metrics?.rooftop_polygon_geojson}
+            geojsonFeatures={cadMode === 'draw' ? null : metrics?.rooftop_polygon_geojson}
             activeFacetIds={activeFacetIds}
             onFacetToggle={handleFacetToggle}
             cadMode={cadMode}
@@ -347,8 +355,8 @@ export default function App() {
           onScrollToOverview={handleScrollToOverview}
         />
 
-        {/* TACTILE BOTTOM METRICS PANEL IN LIGHT THEME (SHOWN IN MAP MODE OR WHEN METRICS EXIST) */}
-        {metrics && (
+        {/* TACTILE BOTTOM METRICS PANEL IN LIGHT THEME (SHOWN IN MAP MODE OR WHEN METRICS EXIST, HIDDEN DURING DRAWING) */}
+        {metrics && cadMode !== 'draw' && (
           <MetricsPanel
             metrics={metrics}
             activeFacetIds={activeFacetIds}
