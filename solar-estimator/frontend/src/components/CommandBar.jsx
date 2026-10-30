@@ -236,7 +236,7 @@ export default function CommandBar({
 
       {/* PRESETS DROPDOWN IN LIGHT THEME */}
       {showPresets && (
-        <div className="w-full max-w-xl bg-white border border-slate-200 p-3 rounded-xl shadow-xl flex flex-wrap items-center gap-2 animate-fade-in">
+        <div className="pointer-events-auto w-full max-w-xl bg-white border border-slate-200 p-3 rounded-xl shadow-xl flex flex-wrap items-center gap-2 animate-fade-in cursor-default z-30">
           <span className="text-xs text-slate-500 px-1 flex items-center gap-1 font-medium">
             <MapPin className="w-3.5 h-3.5 text-blue-600" /> Presets:
           </span>
@@ -245,7 +245,7 @@ export default function CommandBar({
               key={preset.name}
               type="button"
               onClick={() => handleSelectPreset(preset)}
-              className="text-xs bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 px-3 py-1.5 rounded-lg transition-colors font-roboto"
+              className="text-xs bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 px-3 py-1.5 rounded-lg transition-colors font-roboto cursor-pointer active:scale-95"
             >
               {preset.name}
             </button>
@@ -253,7 +253,7 @@ export default function CommandBar({
           <button
             type="button"
             onClick={() => setShowPresets(false)}
-            className="ml-auto text-xs text-slate-400 hover:text-slate-700 px-2 py-0.5"
+            className="ml-auto text-xs text-slate-400 hover:text-slate-700 px-2 py-0.5 cursor-pointer font-medium"
           >
             ✕ Close
           </button>
